@@ -4,23 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Collection · Core NFT Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <header class="site">
-    <a href="/">← Home</a>
+    <a href="/" class="back-link">&#8592; Collections</a>
   </header>
   <main>
     <div class="collection-head">
       <h1 id="col-title">Collection</h1>
       <div id="col-sub" class="addr"></div>
+      <div id="col-stats" class="stats"></div>
     </div>
     <p id="col-error" class="msg err" style="display:none"></p>
     <p id="col-loading" class="loading">Loading collection…</p>
     <div id="nft-grid" class="grid"></div>
   </main>
+
+  <div id="nftModal" class="nft-modal-overlay" style="display:none;">
+    <div class="nft-modal" style="position:relative;">
+      <button class="modal-close" id="modalClose" title="Close">&#x2715;</button>
+      <div class="nft-modal-img" id="modalImg"></div>
+      <div class="nft-modal-body">
+        <div class="modal-id" id="modalId"></div>
+        <h2 id="modalName"></h2>
+        <p class="modal-desc" id="modalDesc"></p>
+        <div class="trait-grid" id="modalTraits"></div>
+      </div>
+    </div>
+  </div>
+
   <footer class="site">
-    In-game text in English · Metadata and images load from tokenURI (IPFS or HTTPS)
+    Core NFT Viewer · On-chain metadata via gocore IPC
   </footer>
   <script src="/js/collection-page.js"></script>
 </body>

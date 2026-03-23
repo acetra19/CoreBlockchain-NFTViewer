@@ -8,7 +8,17 @@
     if (!errEl) return;
     errEl.textContent = msg;
     errEl.style.display = 'block';
-    errEl.className = 'msg err';
+  }
+
+  function escapeHtml(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function truncate(s, n) {
+    if (!s || s.length <= n) return s;
+    return s.slice(0, 10) + '…' + s.slice(-8);
   }
 
   fetch('/collections.json')
@@ -21,40 +31,32 @@
       if (!listEl) return;
       listEl.innerHTML = '';
       if (!items.length) {
-        showErr('No collections configured. Edit public/collections.json on the server.');
+        showErr('No collections configured.');
         return;
       }
-      items.forEach(function (c) {
+      items.forEach(function (c, idx) {
         var slug = c.slug || '';
         var name = c.name || slug;
         var addr = (c.contractAddress || '').trim();
-        var a = document.createElement('a');
-        a.href = 'collection.html?slug=' + encodeURIComponent(slug);
-        a.className = 'card block';
         var placeholder = !addr || addr.indexOf('REPLACE') === 0;
-        a.innerHTML =
+
+        var card = document.createElement('a');
+        card.href = 'collection.html?slug=' + encodeURIComponent(slug);
+        card.className = 'card loaded';
+        card.style.animationDelay = (idx * 60) + 'ms';
+        card.innerHTML =
+          '<div class="card-img" style="background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;">' +
+          '<span style="font-size:2.5rem;opacity:0.5;">&#128049;</span>' +
+          '</div>' +
           '<div class="card-body">' +
           '<h2>' + escapeHtml(name) + '</h2>' +
-          '<p>' + (placeholder ? 'Set contract address in collections.json' : truncate(addr, 42)) + '</p>' +
+          '<p>' + (placeholder ? 'Contract not set' : truncate(addr, 42)) + '</p>' +
           '</div>';
-        var wrap = document.createElement('div');
-        wrap.className = 'card';
-        wrap.appendChild(a);
-        listEl.appendChild(wrap);
+
+        listEl.appendChild(card);
       });
     })
     .catch(function (e) {
-      showErr(e.message || 'Failed to load list');
+      showErr(e.message || 'Failed to load');
     });
-
-  function escapeHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
-  function truncate(s, n) {
-    if (!s || s.length <= n) return s;
-    return s.slice(0, 10) + '…' + s.slice(-8);
-  }
 })();

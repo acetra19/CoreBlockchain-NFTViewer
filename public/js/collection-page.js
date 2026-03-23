@@ -5,16 +5,23 @@
   var slug = (params.get('slug') || '').trim();
   var titleEl = document.getElementById('col-title');
   var subEl = document.getElementById('col-sub');
+  var statsEl = document.getElementById('col-stats');
   var gridEl = document.getElementById('nft-grid');
   var errEl = document.getElementById('col-error');
   var loadingEl = document.getElementById('col-loading');
 
+  var modalOverlay = document.getElementById('nftModal');
+  var modalImg = document.getElementById('modalImg');
+  var modalId = document.getElementById('modalId');
+  var modalName = document.getElementById('modalName');
+  var modalDesc = document.getElementById('modalDesc');
+  var modalTraits = document.getElementById('modalTraits');
+  var modalClose = document.getElementById('modalClose');
+
+  var tokenMetaCache = {};
+
   function showErr(msg) {
-    if (errEl) {
-      errEl.textContent = msg;
-      errEl.style.display = 'block';
-      errEl.className = 'msg err';
-    }
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
     if (loadingEl) loadingEl.style.display = 'none';
   }
 
@@ -53,24 +60,19 @@
   }
 
   function fetchJson(url) {
-    return fetch(url, { mode: 'cors', cache: 'no-cache' }).then(function (r) {
+    return fetch(url, { mode: 'cors' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     });
   }
 
-  function fetchJsonWithGateways(firstUrl) {
+  function fetchJsonGateways(firstUrl) {
     var urls = [firstUrl];
-    var ipfsPath = extractIpfsPath(firstUrl);
-    if (ipfsPath) {
-      IPFS_GATEWAYS.forEach(function (g) {
-        var u = g + ipfsPath;
-        if (urls.indexOf(u) === -1) urls.push(u);
-      });
-    }
+    var p = extractIpfsPath(firstUrl);
+    if (p) IPFS_GATEWAYS.forEach(function (g) { var u = g + p; if (urls.indexOf(u) === -1) urls.push(u); });
     var i = 0;
     function next() {
-      if (i >= urls.length) return Promise.reject(new Error('metadata fetch failed'));
+      if (i >= urls.length) return Promise.reject(new Error('fetch failed'));
       return fetchJson(urls[i++]).catch(function () { return next(); });
     }
     return next();
@@ -78,47 +80,36 @@
 
   function loadMetadata(tokenUri) {
     var s = String(tokenUri).trim();
-    if (!s) return Promise.reject(new Error('empty tokenURI'));
-    if (s.startsWith('{')) {
-      try { return Promise.resolve(JSON.parse(s)); } catch (e) { /* fall through */ }
-    }
+    if (!s) return Promise.reject(new Error('empty'));
+    if (s.startsWith('{')) { try { return Promise.resolve(JSON.parse(s)); } catch (e) { /* */ } }
     if (s.slice(0, 5).toLowerCase() === 'data:') {
       try { return Promise.resolve(parseDataUriJson(s)); } catch (e) { return Promise.reject(e); }
     }
-    return fetchJsonWithGateways(resolveUri(s));
+    return fetchJsonGateways(resolveUri(s));
   }
 
   function pickImage(meta) {
     if (!meta || typeof meta !== 'object') return '';
     var img = meta.image || meta.image_url || meta.image_data;
     if (Array.isArray(img) && img.length) img = img[0];
-    if (img && typeof img === 'object' && img !== null) img = img.src || img.href || '';
+    if (img && typeof img === 'object') img = img.src || img.href || '';
     return img ? resolveUri(String(img).trim()) : '';
   }
 
-  function escapeHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
-  function escapeAttr(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  }
+  function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
   function poolLimit(items, limit, fn) {
     return new Promise(function (resolve) {
       if (!items.length) { resolve(); return; }
-      var next = 0;
-      var active = 0;
+      var next = 0, active = 0;
       function step() {
         while (active < limit && next < items.length) {
           var item = items[next++];
           active++;
           Promise.resolve(fn(item)).finally(function () {
             active--;
-            if (next >= items.length && active === 0) resolve();
-            else step();
+            if (next >= items.length && active === 0) resolve(); else step();
           });
         }
       }
@@ -126,105 +117,144 @@
     });
   }
 
-  // ----- Server API calls (gocore IPC, correct CVM selectors) -----
+  // ----- Server API -----
 
-  function apiGetInfo(contractAddr) {
-    return fetch('/api/nft/info?contract=' + encodeURIComponent(contractAddr))
-      .then(function (r) { return r.json(); });
+  function apiGetInfo(addr) {
+    return fetch('/api/nft/info?contract=' + encodeURIComponent(addr)).then(function (r) { return r.json(); });
   }
 
-  function apiGetTokenURI(contractAddr, tokenId) {
-    return fetch('/api/nft/tokenURI?contract=' + encodeURIComponent(contractAddr) + '&tokenId=' + tokenId)
-      .then(function (r) { return r.json(); });
+  function apiGetTokenURI(addr, tokenId) {
+    return fetch('/api/nft/tokenURI?contract=' + encodeURIComponent(addr) + '&tokenId=' + tokenId).then(function (r) { return r.json(); });
   }
 
-  // ----- Main -----
+  // ----- Modal -----
 
-  function renderToken(tokenId, tokenUri, slot) {
+  function openModal(tokenId) {
+    var data = tokenMetaCache[tokenId];
+    if (!data) return;
+    var meta = data.meta;
+    var img = data.img;
+
+    modalImg.innerHTML = img
+      ? '<img src="' + escapeAttr(img) + '" alt="" style="image-rendering:pixelated;" />'
+      : '<div style="padding:3rem;color:var(--muted);text-align:center;">No image</div>';
+    modalId.textContent = '#' + tokenId;
+    modalName.textContent = (meta && meta.name) ? String(meta.name) : 'Token #' + tokenId;
+    modalDesc.textContent = (meta && meta.description) ? String(meta.description) : '';
+    modalDesc.style.display = (meta && meta.description) ? 'block' : 'none';
+
+    modalTraits.innerHTML = '';
+    var attrs = (meta && meta.attributes) || [];
+    if (Array.isArray(attrs) && attrs.length) {
+      attrs.forEach(function (a) {
+        if (!a || !a.trait_type) return;
+        var card = document.createElement('div');
+        card.className = 'trait-card';
+        card.innerHTML =
+          '<div class="trait-type">' + escapeHtml(String(a.trait_type)) + '</div>' +
+          '<div class="trait-value">' + escapeHtml(String(a.value != null ? a.value : '—')) + '</div>';
+        modalTraits.appendChild(card);
+      });
+    } else {
+      modalTraits.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);font-size:0.8rem;text-align:center;padding:0.5rem;">No traits found</div>';
+    }
+
+    modalOverlay.style.display = 'flex';
+    requestAnimationFrame(function () { modalOverlay.classList.add('open'); });
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+    setTimeout(function () { modalOverlay.style.display = 'none'; }, 250);
+  }
+
+  if (modalClose) modalClose.addEventListener('click', closeModal);
+  if (modalOverlay) modalOverlay.addEventListener('click', function (e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && modalOverlay && modalOverlay.classList.contains('open')) closeModal();
+  });
+
+  // ----- Render -----
+
+  function renderToken(tokenId, tokenUri, slot, delay) {
     if (!tokenUri) {
-      slot.innerHTML = '<div class="nft-thumb"><span style="padding:1rem;color:#666">#' + tokenId + '</span></div>' +
-        '<div class="nft-meta">No tokenURI</div>';
+      slot.innerHTML = '<div class="nft-thumb"><span style="padding:1rem;color:var(--muted)">#' + tokenId + '</span></div>' +
+        '<div class="nft-meta"><span class="token-id">#' + tokenId + '</span></div>';
+      slot.classList.add('loaded');
+      slot.style.animationDelay = delay + 'ms';
       return Promise.resolve();
     }
     return loadMetadata(tokenUri)
       .then(function (meta) {
         var img = pickImage(meta);
+        tokenMetaCache[tokenId] = { meta: meta, img: img };
         slot.innerHTML =
           '<div class="nft-thumb">' +
-          (img ? '<img src="' + escapeAttr(img) + '" alt="" loading="lazy" />' : '<span style="padding:1rem;color:#666">No image</span>') +
+          (img ? '<img src="' + escapeAttr(img) + '" alt="" loading="lazy" />' : '<span style="padding:1rem;color:var(--muted)">No image</span>') +
           '</div>' +
-          '<div class="nft-meta">#' + tokenId + (meta.name ? ' · ' + escapeHtml(String(meta.name)) : '') + '</div>';
+          '<div class="nft-meta"><span class="token-id">#' + tokenId + '</span>' + (meta.name ? ' · ' + escapeHtml(String(meta.name)) : '') + '</div>';
+        slot.classList.add('loaded');
+        slot.style.animationDelay = delay + 'ms';
+        slot.addEventListener('click', function () { openModal(tokenId); });
       })
       .catch(function (err) {
-        if (typeof console !== 'undefined' && console.warn) {
-          console.warn('[NFT viewer] token', tokenId, err && err.message ? err.message : err);
-        }
-        slot.innerHTML = '<div class="nft-thumb"><span style="padding:1rem;color:#666">#' + tokenId + '</span></div>' +
-          '<div class="nft-meta">Metadata unavailable</div>';
+        if (typeof console !== 'undefined' && console.warn) console.warn('[NFT viewer] token', tokenId, err && err.message ? err.message : err);
+        slot.innerHTML = '<div class="nft-thumb"><span style="padding:1rem;color:var(--muted)">#' + tokenId + '</span></div>' +
+          '<div class="nft-meta"><span class="token-id">#' + tokenId + '</span> · unavailable</div>';
+        slot.classList.add('loaded');
+        slot.style.animationDelay = delay + 'ms';
       });
   }
 
-  if (!slug) {
-    showErr('Missing ?slug= in URL. Go back to the home page.');
-    return;
-  }
+  // ----- Init -----
+
+  if (!slug) { showErr('Missing ?slug= in URL. Go back to the home page.'); return; }
 
   fetch('/collections.json')
-    .then(function (r) {
-      if (!r.ok) throw new Error('collections.json');
-      return r.json();
-    })
+    .then(function (r) { if (!r.ok) throw new Error('collections.json'); return r.json(); })
     .then(function (data) {
       var list = (data && data.collections) || [];
       var cfg = list.find(function (c) { return c.slug === slug; });
-      if (!cfg) throw new Error('Unknown collection slug');
+      if (!cfg) throw new Error('Unknown collection');
       var addr = (cfg.contractAddress || '').trim();
-      if (!addr || addr.indexOf('REPLACE') === 0) {
-        throw new Error('Set contractAddress for this collection in collections.json');
-      }
+      if (!addr || addr.indexOf('REPLACE') === 0) throw new Error('Set contractAddress in collections.json');
+
       titleEl.textContent = cfg.name || slug;
       subEl.textContent = addr;
 
-      return apiGetInfo(addr).then(function (info) {
-        return { cfg: cfg, addr: addr, info: info };
-      });
+      return apiGetInfo(addr).then(function (info) { return { cfg: cfg, addr: addr, info: info }; });
     })
     .then(function (ctx) {
-      var cfg = ctx.cfg;
-      var addr = ctx.addr;
-      var info = ctx.info;
-
+      var cfg = ctx.cfg, addr = ctx.addr, info = ctx.info;
       if (info.ok && info.name) titleEl.textContent = info.name;
 
+      if (statsEl && info.ok) {
+        var parts = [];
+        if (info.totalSupply != null) parts.push('<span class="stat"><strong>' + info.totalSupply + '</strong> items</span>');
+        if (info.symbol) parts.push('<span class="stat">Symbol: <strong>' + escapeHtml(info.symbol) + '</strong></span>');
+        statsEl.innerHTML = parts.join('');
+      }
+
       var start = Math.max(0, parseInt(cfg.tokenIdStart, 10) || 1);
-      var end;
-      if (info.ok && info.totalSupply != null && info.totalSupply > 0) {
-        end = start + info.totalSupply - 1;
-      } else {
-        end = cfg.tokenIdEnd != null ? parseInt(cfg.tokenIdEnd, 10) : NaN;
-      }
-      if (!Number.isFinite(end)) {
-        throw new Error('Could not determine token range. Set tokenIdEnd in collections.json.');
-      }
+      var end = (info.ok && info.totalSupply > 0) ? start + info.totalSupply - 1 : (cfg.tokenIdEnd != null ? parseInt(cfg.tokenIdEnd, 10) : NaN);
+      if (!Number.isFinite(end)) throw new Error('Could not determine token range.');
 
       var ids = [];
       for (var i = start; i <= end; i++) ids.push(i);
-
       var maxTokens = parseInt(cfg.maxTokens, 10);
       if (!Number.isFinite(maxTokens) || maxTokens < 1) maxTokens = 2000;
-      if (ids.length > maxTokens) {
-        showErr('Range too large (' + ids.length + '). Set "maxTokens" in collections.json.');
-        return;
-      }
+      if (ids.length > maxTokens) { showErr('Too many tokens (' + ids.length + ').'); return; }
 
       if (!gridEl) return;
       gridEl.innerHTML = '';
-      var tasks = ids.map(function (id) {
+      var tasks = ids.map(function (id, idx) {
         var slot = document.createElement('div');
-        slot.className = 'card';
-        slot.innerHTML = '<div class="loading" style="padding:1rem">Loading…</div>';
+        slot.className = 'card clickable';
+        slot.innerHTML = '<div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div>';
         gridEl.appendChild(slot);
-        return { id: id, slot: slot };
+        return { id: id, slot: slot, delay: Math.min(idx * 15, 400) };
       });
       hideLoading();
 
@@ -232,16 +262,9 @@
       if (!Number.isFinite(parallel) || parallel < 1) parallel = 2;
       return poolLimit(tasks, parallel, function (t) {
         return apiGetTokenURI(addr, t.id)
-          .then(function (resp) {
-            var uri = (resp && resp.ok) ? resp.tokenURI : null;
-            return renderToken(t.id, uri, t.slot);
-          })
-          .catch(function () {
-            return renderToken(t.id, null, t.slot);
-          });
+          .then(function (resp) { return renderToken(t.id, resp && resp.ok ? resp.tokenURI : null, t.slot, t.delay); })
+          .catch(function () { return renderToken(t.id, null, t.slot, t.delay); });
       });
     })
-    .catch(function (e) {
-      showErr(e.message || String(e));
-    });
+    .catch(function (e) { showErr(e.message || String(e)); });
 })();

@@ -1,185 +1,386 @@
 :root {
-  --bg: #0f0f12;
-  --card: #18181c;
-  --text: #e8e8ec;
-  --muted: #8b8b9a;
-  --accent: #6b7fff;
-  --border: rgba(107, 127, 255, 0.25);
+  --bg: #08080c;
+  --bg2: #101016;
+  --card: #14141a;
+  --card-hover: #1a1a24;
+  --text: #eaeaf0;
+  --muted: #7a7a8e;
+  --accent: #7c8aff;
+  --accent2: #a78bfa;
+  --glow: rgba(124, 138, 255, 0.12);
+  --border: rgba(124, 138, 255, 0.15);
+  --border-hover: rgba(124, 138, 255, 0.45);
+  --radius: 14px;
+  --radius-sm: 10px;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  margin: 0;
   min-height: 100vh;
-  font-family: system-ui, Segoe UI, Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.45;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
-a {
-  color: var(--accent);
-  text-decoration: none;
-}
+a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+a:hover { color: var(--accent2); }
 
-a:hover {
-  text-decoration: underline;
-}
-
+/* --- Header --- */
 header.site {
-  padding: 1.25rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 1rem 1.5rem;
+  background: rgba(8, 8, 12, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 1rem;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
 }
 
 header.site h1 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-header.site .sub {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
+header.site .sub { color: var(--muted); font-size: 0.82rem; }
 
-main {
-  padding: 1.25rem 1.5rem 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+header.site .back-link {
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  padding: 0.2rem 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  background: rgba(107, 127, 255, 0.15);
+  background: linear-gradient(135deg, rgba(124, 138, 255, 0.15), rgba(167, 139, 250, 0.15));
   color: var(--accent);
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.card {
-  background: var(--card);
-  border-radius: 12px;
   border: 1px solid var(--border);
-  overflow: hidden;
-  transition: border-color 0.15s;
 }
 
-.card:hover {
-  border-color: rgba(107, 127, 255, 0.45);
+/* --- Main --- */
+main {
+  padding: 1.5rem 1.5rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.card a.block {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-}
-
-.card a.block:hover {
-  text-decoration: none;
-}
-
-.card-img {
-  aspect-ratio: 1;
-  background: #222;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.card-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.card-body {
-  padding: 0.75rem 0.9rem 1rem;
-}
-
-.card-body h2 {
-  margin: 0 0 0.35rem;
-  font-size: 1rem;
-}
-
-.card-body p {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.nft-thumb {
-  border-radius: 8px;
-  overflow: hidden;
-  background: #222;
-  aspect-ratio: 1;
-}
-
-.nft-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.nft-meta {
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.msg {
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  background: rgba(255, 180, 80, 0.12);
-  border: 1px solid rgba(255, 180, 80, 0.35);
-  color: #f0d9a8;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
-.msg.err {
-  background: rgba(255, 80, 80, 0.12);
-  border-color: rgba(255, 120, 120, 0.4);
-  color: #ffb4b4;
-}
-
-footer.site {
-  padding: 1rem 1.5rem 2rem;
-  color: var(--muted);
-  font-size: 0.8rem;
-  text-align: center;
-}
-
+/* --- Collection Header --- */
 .collection-head {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .collection-head h1 {
-  margin: 0 0 0.35rem;
-  font-size: 1.35rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.3rem;
 }
 
 .collection-head .addr {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--muted);
   word-break: break-all;
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
+.collection-head .stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+}
+
+.collection-head .stat {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.collection-head .stat strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* --- Grid --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1rem; }
+}
+
+@media (min-width: 1024px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); }
+}
+
+/* --- Card --- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hover);
+  box-shadow: 0 8px 30px var(--glow);
+}
+
+.card.clickable { cursor: pointer; }
+
+.card-img, .nft-thumb {
+  aspect-ratio: 1;
+  background: var(--bg2);
+  overflow: hidden;
+  position: relative;
+}
+
+.nft-thumb img, .card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  image-rendering: pixelated;
+}
+
+.card:hover .nft-thumb img,
+.card:hover .card-img img {
+  transform: scale(1.06);
+}
+
+.card-body {
+  padding: 0.65rem 0.8rem 0.75rem;
+}
+
+.card-body h2 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.15rem; }
+.card-body p { font-size: 0.75rem; color: var(--muted); }
+
+.nft-meta {
+  padding: 0.5rem 0.7rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nft-meta .token-id {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* --- Loading skeleton --- */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg2) 25%, #1e1e28 50%, var(--bg2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-thumb { aspect-ratio: 1; }
+.skeleton-text { height: 0.8rem; width: 60%; margin: 0.5rem 0.7rem; border-radius: 4px; }
+
+/* --- Messages --- */
+.msg {
+  padding: 0.85rem 1.1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 180, 80, 0.08);
+  border: 1px solid rgba(255, 180, 80, 0.25);
+  color: #f0d9a8;
+}
+
+.msg.err {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 80, 80, 0.3);
+  color: #ffb4b4;
+}
+
+/* --- NFT Detail Modal --- */
+.nft-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.nft-modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.nft-modal {
+  background: var(--card);
+  border: 1px solid var(--border-hover);
+  border-radius: 18px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 60px var(--glow);
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.25s ease;
+}
+
+.nft-modal-overlay.open .nft-modal {
+  transform: scale(1) translateY(0);
+}
+
+.nft-modal-img {
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 18px 18px 0 0;
+  background: var(--bg2);
+}
+
+.nft-modal-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.nft-modal-body {
+  padding: 1.25rem;
+}
+
+.nft-modal-body h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.nft-modal-body .modal-id {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.nft-modal-body .modal-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.trait-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.trait-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  text-align: center;
+  transition: border-color 0.15s;
+}
+
+.trait-card:hover {
+  border-color: var(--border-hover);
+}
+
+.trait-type {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.trait-value {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 2;
+}
+
+.modal-close:hover { background: rgba(0, 0, 0, 0.75); }
+
+/* --- Footer --- */
+footer.site {
+  padding: 1.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Loading text --- */
 .loading {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
+/* --- Fade-in animation for cards --- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card.loaded {
+  animation: fadeInUp 0.35s ease both;
 }
