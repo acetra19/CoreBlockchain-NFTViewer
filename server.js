@@ -6,7 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
-const { postWithRetry } = require('./rpc-upstream');
+const { handleRpcBody, ipcAvailable } = require('./rpc-upstream');
 
 function loadEnvFile() {
   try {
@@ -69,7 +69,7 @@ async function readBody(req) {
 }
 
 async function proxyRpc(body) {
-  if (!UPSTREAM) throw new Error('CORE_RPC_URL not set');
+  if (!UPSTREAM && !ipcAvailable()) throw new Error('Neither GOCORE_DATADIR (IPC) nor CORE_RPC_URL (HTTP) configured');
   let parsed;
   try {
     parsed = JSON.parse(body);
@@ -86,9 +86,7 @@ async function proxyRpc(body) {
       throw err;
     }
   }
-  const bodyStr = typeof body === 'string' ? body : JSON.stringify(parsed);
-  const r = await postWithRetry(UPSTREAM, bodyStr);
-  return { status: r.status, text: r.text };
+  return handleRpcBody(body, UPSTREAM);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -98,6 +96,7 @@ const server = http.createServer(async (req, res) => {
   if (p === '/api/health') {
     send(res, 200, JSON.stringify({
       ok: true,
+      ipc: ipcAvailable(),
       upstreamConfigured: !!UPSTREAM
     }), { 'Content-Type': 'application/json; charset=utf-8' });
     return;

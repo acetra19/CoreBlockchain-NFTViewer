@@ -1,7 +1,7 @@
 # Core NFT Viewer (coredrop)
 
 Read-only gallery for **curated** NFT collections on Core Blockchain.  
-Designed to run on the **same VPS** as [dex.coredrop.fun](https://dex.coredrop.fun): static UI + JSON-RPC proxy (browsers cannot call the chain RPC directly due to CORS).
+Designed to run on the **same VPS** as [dex.coredrop.fun](https://dex.coredrop.fun): static UI + RPC proxy via **gocore IPC** (same approach as the DEX — no HTTP port needed on gocore).
 
 ## Features (MVP)
 
@@ -14,46 +14,44 @@ Designed to run on the **same VPS** as [dex.coredrop.fun](https://dex.coredrop.f
 ```bash
 cd nft-viewer
 cp .env.example .env
-# Edit .env: CORE_RPC_URL must point at gocore JSON-RPC (HTTP), not IPC
+# Set GOCORE_DATADIR (same as gocore on this machine) — IPC, no HTTP needed
 npm start
 ```
 
 Open http://127.0.0.1:3470
 
-### `CORE_RPC_URL` vs DEX (gocore)
+### Connecting to gocore (IPC — same as the DEX)
 
-| App | Connection |
-|-----|------------|
-| **dOckie DEX GUI** (`my-memecoin`) | Usually **IPC** to gocore on the VPS — `CORE_RPC_URL` can be **empty** there. |
-| **This NFT viewer** | **HTTP JSON-RPC only** (`eth_call`). Browsers cannot use IPC; `/api/rpc` proxies to `CORE_RPC_URL`. |
+The viewer server proxies browser `eth_call` requests to **gocore via IPC** (`gocore attach --exec`), exactly like the DEX GUI. **No HTTP port** on gocore is needed.
 
-So you do **not** copy “empty `CORE_RPC_URL`” from the DEX. You must expose JSON-RPC, typically:
+Set **`GOCORE_DATADIR`** in `.env` to the same datadir as your gocore service (e.g. `/root/core-mainnet-node`). The server finds the IPC socket automatically.
 
-- **Same VPS as DEX:** start gocore with **`--http --http.addr 127.0.0.1 --http.port 9545`** (localhost only), then set `CORE_RPC_URL=http://127.0.0.1:9545` for this service. See **`my-memecoin/docs/DEPLOY_VPS.md`** (section *NFT Viewer*).
-- **Tunnel:** ngrok/cloudflared to your gocore HTTP port (same idea as Railway in `gui/README.md`).
+**Fallback:** If gocore is on a different machine (no local IPC), set `CORE_RPC_URL` to the HTTP JSON-RPC URL instead.
 
 ## Configure collections
 
 Edit `public/collections.json`:
 
-- `contractAddress` — full Core **cb…** address (replace placeholder for [Core Cats](https://core-cats-mint.vercel.app/mint) when you have it)
+- `contractAddress` — full Core **cb…** address
 - `tokenIdStart` — usually `1`
 - `tokenIdEnd` — fallback last id if `totalSupply()` is missing or fails
 - `tryTotalSupply` — if `true`, uses `totalSupply()` to compute the id range (`start` … `start + totalSupply - 1`)
 - `maxTokens` — safety cap for how many NFTs to load (default **2000**). Raise for large collections (e.g. Core Cats 1000).
-- `loadParallel` — concurrent `eth_call` loads (default **2**) so gocore HTTP is not overwhelmed
+- `loadParallel` — concurrent `eth_call` loads (default **2**) so gocore IPC is not overwhelmed
 
 ## Same VPS as DEX (Nginx + PM2)
 
 1. **DNS** — A record: `nftviewer` → same IP as `dex.coredrop.fun`
 
-2. **Environment** — reuse the same `CORE_RPC_URL` as the DEX `.env` (gocore HTTP on the VPS or tunnel).
+2. **Environment** — set `GOCORE_DATADIR` (same as DEX/gocore service). `CORE_RPC_URL` not needed when IPC works.
 
 3. **PM2** (example port `3470`):
 
    ```bash
-   cd /path/to/nft-viewer
-   NFT_VIEWER_PORT=3470 CORE_RPC_URL='http://127.0.0.1:9545' pm2 start server.js --name nft-viewer
+   cd ~/CoreBlockchain-NFTViewer
+   cp .env.example .env
+   nano .env   # set GOCORE_DATADIR to your gocore datadir
+   pm2 start server.js --name nft-viewer
    pm2 save
    ```
 
@@ -82,7 +80,7 @@ Edit `public/collections.json`:
 
 ## Security
 
-- `/api/rpc` only allows `eth_call`, `eth_chainId`, `eth_blockNumber` (no sends)
+- `/api/rpc` only allows `eth_call`, `eth_chainId`, `eth_blockNumber` + a few read methods (no sends)
 - Serve behind HTTPS in production
 
 ## Limits
@@ -94,11 +92,8 @@ Edit `public/collections.json`:
 
 The viewer resolves `tokenURI` (or `uri()` fallback), then JSON metadata. It supports **HTTP(S)**, **`ipfs://`**, **`data:application/json;base64,...`**, and **hex-encoded UTF-8** `tokenURI` returns. IPFS JSON is tried on several **public gateways**. If thumbnails still fail, open the browser **developer console** (F12) — warnings log per token id.
 
-## `/api/rpc` returns 500 `fetch failed`
+## `/api/rpc` returns 500
 
-That was the **Node proxy** failing to reach **gocore HTTP** (not the browser). Fixes in this repo:
-
-- Proxy uses **`http`/`https`** (not `fetch`) + **retries** + **limited concurrency** so gocore is not flooded.
-- Use **`CORE_RPC_URL=http://127.0.0.1:9545`** (not `localhost`) if gocore listens on IPv4 only.
-- Ensure gocore is started with **`--http --http.addr 127.0.0.1 --http.port 9545`**.
-- Lower **`loadParallel`** in `collections.json` (default **2**) if needed.
+- Check `GOCORE_DATADIR` in `.env` — must match the running gocore datadir so the IPC socket is found.
+- On the VPS: `curl http://127.0.0.1:3470/api/health` should show `"ipc": true`.
+- Lower **`loadParallel`** in `collections.json` if gocore is slow (default **2**).
