@@ -1,15 +1,15 @@
 :root {
-  --bg: #1a1028;
-  --bg2: #221438;
-  --card: rgba(255, 255, 255, 0.06);
-  --card-hover: rgba(255, 255, 255, 0.1);
-  --text: #f5f0ff;
-  --muted: #b0a4c8;
-  --accent: #c9a0ff;
-  --accent2: #ffd166;
-  --glow: rgba(201, 160, 255, 0.15);
-  --border: rgba(201, 160, 255, 0.18);
-  --border-hover: rgba(255, 209, 102, 0.5);
+  --bg: #f0e6ff;
+  --bg2: #e8daf5;
+  --card: rgba(255, 255, 255, 0.65);
+  --card-hover: rgba(255, 255, 255, 0.85);
+  --text: #2a1a3e;
+  --muted: #6b5a80;
+  --accent: #7e3fbf;
+  --accent2: #e6a817;
+  --glow: rgba(126, 63, 191, 0.12);
+  --border: rgba(126, 63, 191, 0.18);
+  --border-hover: rgba(230, 168, 23, 0.55);
   --radius: 14px;
   --radius-sm: 10px;
 }
@@ -21,8 +21,8 @@ body {
   font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
   background-image:
-    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(120, 60, 200, 0.25) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(255, 180, 50, 0.15) 0%, transparent 55%);
+    radial-gradient(ellipse 80% 60% at 15% 5%, rgba(160, 100, 240, 0.3) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 90% 85%, rgba(255, 200, 60, 0.25) 0%, transparent 50%);
   background-attachment: fixed;
   color: var(--text);
   line-height: 1.5;
@@ -38,7 +38,7 @@ header.site {
   top: 0;
   z-index: 50;
   padding: 1rem 1.5rem;
-  background: rgba(26, 16, 40, 0.82);
+  background: rgba(240, 230, 255, 0.8);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
@@ -74,9 +74,9 @@ header.site .back-link {
   letter-spacing: 0.06em;
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  background: linear-gradient(135deg, rgba(255, 209, 102, 0.15), rgba(201, 160, 255, 0.15));
+  background: linear-gradient(135deg, rgba(230, 168, 23, 0.15), rgba(126, 63, 191, 0.1));
   color: var(--accent2);
-  border: 1px solid rgba(255, 209, 102, 0.25);
+  border: 1px solid rgba(230, 168, 23, 0.3);
 }
 
 /* --- Main --- */
@@ -235,8 +235,8 @@ main {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(14, 8, 24, 0.8);
-  backdrop-filter: blur(8px);
+  background: rgba(42, 26, 62, 0.6);
+  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -253,14 +253,14 @@ main {
 }
 
 .nft-modal {
-  background: #1e1230;
+  background: #fff;
   border: 1px solid var(--border-hover);
   border-radius: 18px;
   max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 60px var(--glow);
+  box-shadow: 0 24px 80px rgba(80, 40, 120, 0.2), 0 0 60px var(--glow);
   transform: scale(0.95) translateY(10px);
   transition: transform 0.25s ease;
 }
@@ -274,7 +274,7 @@ main {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 18px 18px 0 0;
-  background: #160e24;
+  background: var(--bg2);
 }
 
 .nft-modal-img img {
@@ -315,7 +315,7 @@ main {
 }
 
 .trait-card {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.55rem 0.7rem;
@@ -350,7 +350,7 @@ main {
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(42, 26, 62, 0.6);
   color: #fff;
   font-size: 1.1rem;
   cursor: pointer;
@@ -361,7 +361,7 @@ main {
   z-index: 2;
 }
 
-.modal-close:hover { background: rgba(0, 0, 0, 0.75); }
+.modal-close:hover { background: rgba(42, 26, 62, 0.85); }
 
 /* --- Footer --- */
 footer.site {
@@ -412,7 +412,7 @@ footer.site {
 .pager-btn.active {
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   border-color: var(--accent2);
-  color: #1a1028;
+  color: #fff;
   font-weight: 600;
   cursor: default;
 }
