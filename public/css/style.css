@@ -1,15 +1,15 @@
 :root {
-  --bg: #08080c;
-  --bg2: #101016;
-  --card: #14141a;
-  --card-hover: #1a1a24;
-  --text: #eaeaf0;
-  --muted: #7a7a8e;
-  --accent: #7c8aff;
-  --accent2: #a78bfa;
-  --glow: rgba(124, 138, 255, 0.12);
-  --border: rgba(124, 138, 255, 0.15);
-  --border-hover: rgba(124, 138, 255, 0.45);
+  --bg: #1a1028;
+  --bg2: #221438;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-hover: rgba(255, 255, 255, 0.1);
+  --text: #f5f0ff;
+  --muted: #b0a4c8;
+  --accent: #c9a0ff;
+  --accent2: #ffd166;
+  --glow: rgba(201, 160, 255, 0.15);
+  --border: rgba(201, 160, 255, 0.18);
+  --border-hover: rgba(255, 209, 102, 0.5);
   --radius: 14px;
   --radius-sm: 10px;
 }
@@ -20,6 +20,10 @@ body {
   min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(120, 60, 200, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 85% 80%, rgba(255, 180, 50, 0.15) 0%, transparent 55%);
+  background-attachment: fixed;
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -34,7 +38,7 @@ header.site {
   top: 0;
   z-index: 50;
   padding: 1rem 1.5rem;
-  background: rgba(8, 8, 12, 0.85);
+  background: rgba(26, 16, 40, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
@@ -48,7 +52,7 @@ header.site h1 {
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -70,9 +74,9 @@ header.site .back-link {
   letter-spacing: 0.06em;
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
-  background: linear-gradient(135deg, rgba(124, 138, 255, 0.15), rgba(167, 139, 250, 0.15));
-  color: var(--accent);
-  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.15), rgba(201, 160, 255, 0.15));
+  color: var(--accent2);
+  border: 1px solid rgba(255, 209, 102, 0.25);
 }
 
 /* --- Main --- */
@@ -200,7 +204,7 @@ main {
 }
 
 .skeleton {
-  background: linear-gradient(90deg, var(--bg2) 25%, #1e1e28 50%, var(--bg2) 75%);
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: var(--radius-sm);
@@ -231,7 +235,7 @@ main {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(14, 8, 24, 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -249,7 +253,7 @@ main {
 }
 
 .nft-modal {
-  background: var(--card);
+  background: #1e1230;
   border: 1px solid var(--border-hover);
   border-radius: 18px;
   max-width: 480px;
@@ -270,7 +274,7 @@ main {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 18px 18px 0 0;
-  background: var(--bg2);
+  background: #160e24;
 }
 
 .nft-modal-img img {
@@ -311,7 +315,7 @@ main {
 }
 
 .trait-card {
-  background: var(--bg2);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.55rem 0.7rem;
@@ -327,7 +331,7 @@ main {
   font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--accent);
+  color: var(--accent2);
   font-weight: 600;
   margin-bottom: 0.15rem;
 }
@@ -406,9 +410,9 @@ footer.site {
 }
 
 .pager-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: var(--accent2);
+  color: #1a1028;
   font-weight: 600;
   cursor: default;
 }
