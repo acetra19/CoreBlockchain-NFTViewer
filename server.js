@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const { handleRpcBody, ipcAvailable } = require('./rpc-upstream');
+const nftIpc = require('./nft-ipc');
 
 function loadEnvFile() {
   try {
@@ -115,6 +116,54 @@ const server = http.createServer(async (req, res) => {
       send(res, code, JSON.stringify({ ok: false, error: e.message }), {
         'Content-Type': 'application/json; charset=utf-8'
       });
+    }
+    return;
+  }
+
+  // --- NFT API (uses xcb.contract via gocore IPC — correct CVM selectors) ---
+
+  if (p === '/api/nft/info' && req.method === 'GET') {
+    const addr = (url.searchParams.get('contract') || '').trim();
+    if (!addr) { send(res, 400, JSON.stringify({ ok: false, error: 'missing contract' }), { 'Content-Type': 'application/json' }); return; }
+    try {
+      const name = nftIpc.getName(addr);
+      const symbol = nftIpc.getSymbol(addr);
+      const totalSupply = nftIpc.getTotalSupply(addr);
+      send(res, 200, JSON.stringify({ ok: true, name, symbol, totalSupply }), { 'Content-Type': 'application/json' });
+    } catch (e) {
+      send(res, 500, JSON.stringify({ ok: false, error: e.message }), { 'Content-Type': 'application/json' });
+    }
+    return;
+  }
+
+  if (p === '/api/nft/tokenURI' && req.method === 'GET') {
+    const addr = (url.searchParams.get('contract') || '').trim();
+    const tokenId = url.searchParams.get('tokenId');
+    if (!addr || tokenId == null) { send(res, 400, JSON.stringify({ ok: false, error: 'missing contract or tokenId' }), { 'Content-Type': 'application/json' }); return; }
+    try {
+      const uri = nftIpc.getTokenURI(addr, tokenId);
+      if (uri && uri.startsWith('ERROR:')) {
+        send(res, 200, JSON.stringify({ ok: false, error: uri }), { 'Content-Type': 'application/json' });
+      } else {
+        send(res, 200, JSON.stringify({ ok: true, tokenURI: uri }), { 'Content-Type': 'application/json' });
+      }
+    } catch (e) {
+      send(res, 500, JSON.stringify({ ok: false, error: e.message }), { 'Content-Type': 'application/json' });
+    }
+    return;
+  }
+
+  if (p === '/api/nft/batch-tokenURI' && req.method === 'GET') {
+    const addr = (url.searchParams.get('contract') || '').trim();
+    const idsParam = (url.searchParams.get('ids') || '').trim();
+    if (!addr || !idsParam) { send(res, 400, JSON.stringify({ ok: false, error: 'missing contract or ids' }), { 'Content-Type': 'application/json' }); return; }
+    var ids = idsParam.split(',').map(function (s) { return parseInt(s.trim(), 10); }).filter(function (n) { return !isNaN(n); });
+    if (ids.length > 50) ids = ids.slice(0, 50);
+    try {
+      const results = nftIpc.batchTokenURIs(addr, ids);
+      send(res, 200, JSON.stringify({ ok: true, results }), { 'Content-Type': 'application/json' });
+    } catch (e) {
+      send(res, 500, JSON.stringify({ ok: false, error: e.message }), { 'Content-Type': 'application/json' });
     }
     return;
   }
