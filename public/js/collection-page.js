@@ -310,7 +310,7 @@
       });
       hideLoading();
       var parallel = parseInt(cfg.loadParallel, 10);
-      if (!Number.isFinite(parallel) || parallel < 1) parallel = 8;
+      if (!Number.isFinite(parallel) || parallel < 1) parallel = 2;
       return poolLimit(tasks, parallel, function (t) {
         return loadOne(c, t.id, t.slot);
       });

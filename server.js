@@ -6,6 +6,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
+const { postWithRetry } = require('./rpc-upstream');
 
 function loadEnvFile() {
   try {
@@ -40,7 +41,14 @@ const MIME = {
   '.webp': 'image/webp'
 };
 
-const ALLOW_RPC = new Set(['eth_call', 'eth_chainId', 'eth_blockNumber']);
+const ALLOW_RPC = new Set([
+  'eth_call',
+  'eth_chainId',
+  'eth_blockNumber',
+  'eth_getBlockByNumber',
+  'eth_gasPrice',
+  'eth_estimateGas'
+]);
 
 function send(res, code, body, headers) {
   res.writeHead(code, Object.assign({ 'Cache-Control': 'no-store' }, headers || {}));
@@ -78,13 +86,9 @@ async function proxyRpc(body) {
       throw err;
     }
   }
-  const r = await fetch(UPSTREAM, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: typeof body === 'string' ? body : JSON.stringify(parsed)
-  });
-  const text = await r.text();
-  return { status: r.status, text };
+  const bodyStr = typeof body === 'string' ? body : JSON.stringify(parsed);
+  const r = await postWithRetry(UPSTREAM, bodyStr);
+  return { status: r.status, text: r.text };
 }
 
 const server = http.createServer(async (req, res) => {

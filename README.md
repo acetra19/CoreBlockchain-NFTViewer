@@ -41,7 +41,7 @@ Edit `public/collections.json`:
 - `tokenIdEnd` — fallback last id if `totalSupply()` is missing or fails
 - `tryTotalSupply` — if `true`, uses `totalSupply()` to compute the id range (`start` … `start + totalSupply - 1`)
 - `maxTokens` — safety cap for how many NFTs to load (default **2000**). Raise for large collections (e.g. Core Cats 1000).
-- `loadParallel` — concurrent metadata loads (default **8**) to avoid overloading the RPC
+- `loadParallel` — concurrent `eth_call` loads (default **2**) so gocore HTTP is not overwhelmed
 
 ## Same VPS as DEX (Nginx + PM2)
 
@@ -93,3 +93,12 @@ Edit `public/collections.json`:
 ## Metadata / images not loading
 
 The viewer resolves `tokenURI` (or `uri()` fallback), then JSON metadata. It supports **HTTP(S)**, **`ipfs://`**, **`data:application/json;base64,...`**, and **hex-encoded UTF-8** `tokenURI` returns. IPFS JSON is tried on several **public gateways**. If thumbnails still fail, open the browser **developer console** (F12) — warnings log per token id.
+
+## `/api/rpc` returns 500 `fetch failed`
+
+That was the **Node proxy** failing to reach **gocore HTTP** (not the browser). Fixes in this repo:
+
+- Proxy uses **`http`/`https`** (not `fetch`) + **retries** + **limited concurrency** so gocore is not flooded.
+- Use **`CORE_RPC_URL=http://127.0.0.1:9545`** (not `localhost`) if gocore listens on IPv4 only.
+- Ensure gocore is started with **`--http --http.addr 127.0.0.1 --http.port 9545`**.
+- Lower **`loadParallel`** in `collections.json` (default **2**) if needed.
