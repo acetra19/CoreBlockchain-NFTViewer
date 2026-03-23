@@ -3,6 +3,7 @@
 
   var ERC721_ABI = [
     'function tokenURI(uint256 tokenId) view returns (string)',
+    'function uri(uint256 tokenId) view returns (string)',
     'function name() view returns (string)',
     'function symbol() view returns (string)',
     'function totalSupply() view returns (uint256)'
@@ -29,11 +30,127 @@
     if (loadingEl) loadingEl.style.display = 'none';
   }
 
+  var IPFS_GATEWAYS = [
+    'https://ipfs.io/ipfs/',
+    'https://cloudflare-ipfs.com/ipfs/',
+    'https://gateway.pinata.cloud/ipfs/',
+    'https://w3s.link/ipfs/'
+  ];
+
   function resolveTokenUri(uri) {
     if (!uri) return '';
     var u = String(uri).trim();
     if (u.startsWith('ipfs://')) return 'https://ipfs.io/ipfs/' + u.slice(7);
     return u;
+  }
+
+  /** Path after /ipfs/ (CID + optional subpath), or null */
+  function extractIpfsPath(url) {
+    if (!url) return null;
+    var clean = String(url).split('?')[0];
+    var m = /\/ipfs\/(.+)$/.exec(clean);
+    return m ? m[1] : null;
+  }
+
+  function parseDataUriJson(s) {
+    var comma = s.indexOf(',');
+    if (comma === -1) throw new Error('bad data URI');
+    var head = s.slice(0, comma);
+    var payload = s.slice(comma + 1);
+    var isBase64 = /;base64/i.test(head);
+    var jsonStr = isBase64 ? atob(payload) : decodeURIComponent(payload.replace(/\+/g, ' '));
+    return JSON.parse(jsonStr);
+  }
+
+  function fetchJson(url) {
+    return fetch(url, { mode: 'cors', cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  /** Some nodes return tokenURI as hex-encoded UTF-8 bytes. */
+  function tryDecodeHexUtf8(s) {
+    if (typeof s !== 'string' || !/^0x[0-9a-f]+$/i.test(s) || s.length < 4) return null;
+    try {
+      if (typeof ethers !== 'undefined' && ethers.getBytes) {
+        var bytes = ethers.getBytes(s);
+        if (!bytes.length) return null;
+        return new TextDecoder().decode(bytes);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    return null;
+  }
+
+  /** Try same JSON over multiple IPFS gateways if the first request fails. */
+  function fetchJsonWithGateways(firstUrl) {
+    var urls = [firstUrl];
+    var path = extractIpfsPath(firstUrl);
+    if (path) {
+      IPFS_GATEWAYS.forEach(function (g) {
+        var u = g + path;
+        if (urls.indexOf(u) === -1) urls.push(u);
+      });
+    }
+    var i = 0;
+    function next() {
+      if (i >= urls.length) return Promise.reject(new Error('metadata fetch failed'));
+      return fetchJson(urls[i++]).catch(function () { return next(); });
+    }
+    return next();
+  }
+
+  /** Resolve metadata object from tokenURI string (HTTP, ipfs, or data: JSON). */
+  function loadMetadataFromTokenUri(uri) {
+    var s = String(uri).trim();
+    var fromHex = tryDecodeHexUtf8(s);
+    if (fromHex) s = fromHex.trim();
+    if (!s) return Promise.reject(new Error('empty tokenURI'));
+    if (s.startsWith('{')) {
+      try {
+        return Promise.resolve(JSON.parse(s));
+      } catch (e) {
+        /* fall through */
+      }
+    }
+    if (s.slice(0, 5).toLowerCase() === 'data:') {
+      try {
+        return Promise.resolve(parseDataUriJson(s));
+      } catch (e) {
+        return Promise.reject(e);
+      }
+    }
+    return fetchJsonWithGateways(resolveTokenUri(s));
+  }
+
+  function pickImage(meta) {
+    if (!meta || typeof meta !== 'object') return '';
+    var img = meta.image || meta.image_url || meta.image_data;
+    if (Array.isArray(img) && img.length) img = img[0];
+    if (img && typeof img === 'object' && img !== null) {
+      img = img.src || img.href || '';
+    }
+    return img ? String(img).trim() : '';
+  }
+
+  /** Resolve relative image paths against the metadata document URL (HTTP/IPFS). */
+  function resolveImageUrl(raw, tokenUriStr) {
+    if (!raw) return '';
+    var r = String(raw).trim();
+    if (r.startsWith('data:')) return r;
+    if (r.startsWith('ipfs://')) return resolveTokenUri(r);
+    if (/^https?:\/\//i.test(r)) return r;
+    var baseStr = String(tokenUriStr || '').trim();
+    if (!baseStr || baseStr.startsWith('data:') || baseStr.startsWith('{')) return resolveTokenUri(r);
+    try {
+      var base = resolveTokenUri(baseStr);
+      if (base.indexOf('://') !== -1) return new URL(r, base).href;
+    } catch (e) {
+      /* ignore */
+    }
+    return resolveTokenUri(r);
   }
 
   function provider() {
@@ -66,30 +183,35 @@
     return { start: start, end: endCfg };
   }
 
-  function fetchJson(url) {
-    return fetch(url).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
+  function readTokenUri(contract, tokenId) {
+    return contract.tokenURI(tokenId).catch(function () {
+      return contract.uri(tokenId);
     });
   }
 
   /** @returns {Promise<void>} */
   function loadOne(contract, tokenId, slot) {
-    return contract.tokenURI(tokenId)
+    return readTokenUri(contract, tokenId)
       .then(function (uri) {
-        var metaUrl = resolveTokenUri(uri);
-        if (!metaUrl) throw new Error('empty tokenURI');
-        return fetchJson(metaUrl);
+        return loadMetadataFromTokenUri(uri).then(function (meta) {
+          return { meta: meta, tokenUri: uri };
+        });
       })
-      .then(function (meta) {
-        var img = meta.image ? resolveTokenUri(meta.image) : '';
+      .then(function (pack) {
+        var meta = pack.meta;
+        var tokenUri = pack.tokenUri;
+        var rawImg = pickImage(meta);
+        var img = resolveImageUrl(rawImg, String(tokenUri));
         slot.innerHTML =
           '<div class="nft-thumb">' +
           (img ? '<img src="' + escapeAttr(img) + '" alt="" loading="lazy" />' : '<span style="padding:1rem;color:#666">No image</span>') +
           '</div>' +
-          '<div class="nft-meta">#' + String(tokenId) + (meta.name ? ' · ' + escapeHtml(meta.name) : '') + '</div>';
+          '<div class="nft-meta">#' + String(tokenId) + (meta.name ? ' · ' + escapeHtml(String(meta.name)) : '') + '</div>';
       })
-      .catch(function () {
+      .catch(function (err) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[NFT viewer] token', tokenId, err && err.message ? err.message : err);
+        }
         slot.innerHTML = '<div class="nft-thumb"><span style="padding:1rem;color:#666">#' + tokenId + '</span></div>' +
           '<div class="nft-meta">Metadata unavailable</div>';
       });

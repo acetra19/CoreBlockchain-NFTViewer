@@ -89,3 +89,7 @@ Edit `public/collections.json`:
 
 - Very large collections: raise `maxTokens` in `collections.json` or narrow the id range; default cap is 2000
 - Non-standard contracts (no `totalSupply`, weird `tokenURI`) may need per-collection tweaks
+
+## Metadata / images not loading
+
+The viewer resolves `tokenURI` (or `uri()` fallback), then JSON metadata. It supports **HTTP(S)**, **`ipfs://`**, **`data:application/json;base64,...`**, and **hex-encoded UTF-8** `tokenURI` returns. IPFS JSON is tried on several **public gateways**. If thumbnails still fail, open the browser **developer console** (F12) — warnings log per token id.
