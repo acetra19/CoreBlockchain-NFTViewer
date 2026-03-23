@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "title": "Core NFT Viewer",
+    "description": "Curated NFT collections on Core Blockchain. Add contracts in this file."
+  },
+  "collections": [
+    {
+      "slug": "core-cats",
+      "name": "Core Cats",
+      "contractAddress": "cb40316dcf944c9c2d4d1381653753a514e5e01d5df3",
+      "tokenIdStart": 1,
+      "tokenIdEnd": 1000,
+      "tryTotalSupply": true,
+      "website": "https://core-cats-mint.vercel.app/mint"
+    }
+  ]
+}
