@@ -73,6 +73,7 @@
     });
   }
 
+  /** @returns {Promise<void>} */
   function loadOne(contract, tokenId, slot) {
     return contract.tokenURI(tokenId)
       .then(function (uri) {
@@ -102,6 +103,30 @@
 
   function escapeAttr(s) {
     return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  /** Run async tasks with at most `limit` concurrent executions. */
+  function poolLimit(items, limit, fn) {
+    return new Promise(function (resolve) {
+      if (!items.length) {
+        resolve();
+        return;
+      }
+      var next = 0;
+      var active = 0;
+      function step() {
+        while (active < limit && next < items.length) {
+          var item = items[next++];
+          active++;
+          Promise.resolve(fn(item)).finally(function () {
+            active--;
+            if (next >= items.length && active === 0) resolve();
+            else step();
+          });
+        }
+      }
+      step();
+    });
   }
 
   if (!slug) {
@@ -141,24 +166,32 @@
     })
     .then(function (ctx) {
       var c = ctx.contract;
+      var cfg = ctx.cfg;
       var rng = ctx.rng;
       var ids = [];
       var i;
       for (i = rng.start; i <= rng.end; i++) ids.push(i);
-      if (ids.length > 500) {
-        showErr('Range too large (' + ids.length + '). Narrow tokenIdEnd in collections.json.');
+      var maxTokens = parseInt(cfg.maxTokens, 10);
+      if (!Number.isFinite(maxTokens) || maxTokens < 1) maxTokens = 2000;
+      if (ids.length > maxTokens) {
+        showErr('Range too large (' + ids.length + '). Set "maxTokens" in collections.json (e.g. 2500) or narrow tokenIdEnd.');
         return;
       }
       if (!gridEl) return;
       gridEl.innerHTML = '';
-      ids.forEach(function (id) {
+      var tasks = ids.map(function (id) {
         var slot = document.createElement('div');
         slot.className = 'card';
         slot.innerHTML = '<div class="loading" style="padding:1rem">Loading…</div>';
         gridEl.appendChild(slot);
-        loadOne(c, id, slot);
+        return { id: id, slot: slot };
       });
       hideLoading();
+      var parallel = parseInt(cfg.loadParallel, 10);
+      if (!Number.isFinite(parallel) || parallel < 1) parallel = 8;
+      return poolLimit(tasks, parallel, function (t) {
+        return loadOne(c, t.id, t.slot);
+      });
     })
     .catch(function (e) {
       showErr(e.message || String(e));

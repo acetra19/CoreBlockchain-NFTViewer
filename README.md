@@ -40,6 +40,8 @@ Edit `public/collections.json`:
 - `tokenIdStart` — usually `1`
 - `tokenIdEnd` — fallback last id if `totalSupply()` is missing or fails
 - `tryTotalSupply` — if `true`, uses `totalSupply()` to compute the id range (`start` … `start + totalSupply - 1`)
+- `maxTokens` — safety cap for how many NFTs to load (default **2000**). Raise for large collections (e.g. Core Cats 1000).
+- `loadParallel` — concurrent metadata loads (default **8**) to avoid overloading the RPC
 
 ## Same VPS as DEX (Nginx + PM2)
 
@@ -85,5 +87,5 @@ Edit `public/collections.json`:
 
 ## Limits
 
-- Large collections: the UI caps very large ranges; narrow `tokenIdEnd` or rely on `totalSupply` with a sane cap in code
+- Very large collections: raise `maxTokens` in `collections.json` or narrow the id range; default cap is 2000
 - Non-standard contracts (no `totalSupply`, weird `tokenURI`) may need per-collection tweaks
