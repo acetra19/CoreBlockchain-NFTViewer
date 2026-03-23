@@ -27,7 +27,7 @@ function ipcAvailable() {
 }
 
 /**
- * Run a JS expression via `gocore attach --exec` and return stdout.
+ * Run a JS expression via `gocore attach --exec` and return stdout only (ignore stderr WARN lines).
  */
 function gocoreExec(jsExpr) {
   const ipcPath = getGocoreIpcPath(GOCORE_DATADIR);
@@ -36,11 +36,37 @@ function gocoreExec(jsExpr) {
     'attach', ipcPath,
     '--exec', jsExpr
   ], { encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024, windowsHide: true });
-  const out = ((result.stdout || '') + (result.stderr || '')).trim();
-  if (result.status !== 0 && !out) {
-    throw new Error('gocore attach failed (exit ' + result.status + ')');
+  const stdout = (result.stdout || '').trim();
+  if (result.status !== 0 && !stdout) {
+    const stderr = (result.stderr || '').trim();
+    throw new Error('gocore attach failed (exit ' + result.status + '): ' + stderr.slice(0, 200));
   }
-  return out;
+  return stdout;
+}
+
+/**
+ * Run a JS expression that uses console.log("RESULT:" + value) and extract the value.
+ * This avoids gocore WARN lines polluting the output.
+ */
+function gocoreExecWithMarker(jsCode) {
+  const ipcPath = getGocoreIpcPath(GOCORE_DATADIR);
+  const fs = require('fs');
+  const tmpScript = path.join(__dirname, '_nft_rpc_tmp.js');
+  fs.writeFileSync(tmpScript, jsCode.trim(), 'utf8');
+  const scriptPathForLoad = tmpScript.replace(/\\/g, '/');
+  const result = spawnSync('gocore', [
+    '--datadir', GOCORE_DATADIR,
+    'attach', ipcPath,
+    '--exec', "loadScript('" + scriptPathForLoad + "')"
+  ], { encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024, windowsHide: true });
+  const stdout = (result.stdout || '');
+  const m = stdout.match(/RESULT:(.+)/);
+  if (m) return m[1].trim();
+  const clean = stdout.trim();
+  if (result.status !== 0 && !clean) {
+    throw new Error('gocore script failed (exit ' + result.status + ')');
+  }
+  return clean;
 }
 
 /**
@@ -52,15 +78,17 @@ function handleViaIpc(req) {
   const method = req.method;
 
   if (method === 'eth_chainId' || method === 'xcb_chainId') {
-    var raw = gocoreExec('xcb.chainId');
+    var raw = gocoreExecWithMarker('console.log("RESULT:" + xcb.chainId);');
     var cleaned = raw.replace(/[\s"]/g, '');
-    if (!/^0x/i.test(cleaned)) cleaned = '0x' + parseInt(cleaned, 10).toString(16);
+    if (/^\d+$/.test(cleaned)) cleaned = '0x' + parseInt(cleaned, 10).toString(16);
     return { jsonrpc: '2.0', id: id, result: cleaned };
   }
 
   if (method === 'eth_blockNumber' || method === 'xcb_blockNumber') {
-    var raw2 = gocoreExec('xcb.blockNumber');
-    var num = parseInt(raw2.replace(/[\s"]/g, ''), 10);
+    var raw2 = gocoreExecWithMarker('console.log("RESULT:" + xcb.blockNumber);');
+    var numStr = raw2.replace(/[\s"]/g, '');
+    var num = parseInt(numStr, 10);
+    if (isNaN(num)) return { jsonrpc: '2.0', id: id, error: { code: -32000, message: 'blockNumber parse error: ' + raw2.slice(0, 80) } };
     return { jsonrpc: '2.0', id: id, result: '0x' + num.toString(16) };
   }
 
@@ -71,19 +99,19 @@ function handleViaIpc(req) {
     var to = (callObj.to || '').trim();
     var data = (callObj.data || '').trim();
     var gas = callObj.gas || '0xfffff';
-    var jsObj = '{to:"' + to + '",data:"' + data + '",gas:"' + gas + '"}';
     var blockArg = typeof block === 'string' ? '"' + block + '"' : String(block);
-    var expr = 'xcb.call(' + jsObj + ',' + blockArg + ')';
-    var raw3 = gocoreExec(expr);
+    var script = 'var r = xcb.call({to:"' + to + '",data:"' + data + '",gas:"' + gas + '"},' + blockArg + ');\nconsole.log("RESULT:" + r);';
+    var raw3 = gocoreExecWithMarker(script);
     var result = raw3.replace(/[\s"]/g, '');
+    if (!result) return { jsonrpc: '2.0', id: id, error: { code: -32000, message: 'empty xcb.call result' } };
     if (!result.startsWith('0x') && /^[0-9a-fA-F]+$/.test(result)) result = '0x' + result;
     return { jsonrpc: '2.0', id: id, result: result };
   }
 
   if (method === 'eth_gasPrice' || method === 'xcb_gasPrice') {
-    var raw4 = gocoreExec('xcb.gasPrice');
+    var raw4 = gocoreExecWithMarker('console.log("RESULT:" + xcb.gasPrice);');
     var gp = raw4.replace(/[\s"]/g, '');
-    if (!/^0x/i.test(gp)) gp = '0x' + parseInt(gp, 10).toString(16);
+    if (/^\d+$/.test(gp)) gp = '0x' + parseInt(gp, 10).toString(16);
     return { jsonrpc: '2.0', id: id, result: gp };
   }
 
