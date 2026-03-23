@@ -249,22 +249,93 @@
 
       if (!gridEl) return;
       gridEl.innerHTML = '';
-      var tasks = ids.map(function (id, idx) {
-        var slot = document.createElement('div');
-        slot.className = 'card clickable';
-        slot.innerHTML = '<div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div>';
-        gridEl.appendChild(slot);
-        return { id: id, slot: slot, delay: Math.min(idx * 15, 400) };
-      });
-      hideLoading();
 
+      var PAGE_SIZE = parseInt(cfg.pageSize, 10);
+      if (!Number.isFinite(PAGE_SIZE) || PAGE_SIZE < 1) PAGE_SIZE = 50;
       var parallel = parseInt(cfg.loadParallel, 10);
       if (!Number.isFinite(parallel) || parallel < 1) parallel = 2;
-      return poolLimit(tasks, parallel, function (t) {
-        return apiGetTokenURI(addr, t.id)
-          .then(function (resp) { return renderToken(t.id, resp && resp.ok ? resp.tokenURI : null, t.slot, t.delay); })
-          .catch(function () { return renderToken(t.id, null, t.slot, t.delay); });
-      });
+
+      var pageStart = 0;
+      var pagerWrap = document.createElement('div');
+      pagerWrap.className = 'pager';
+      gridEl.parentNode.insertBefore(pagerWrap, gridEl.nextSibling);
+
+      function loadPage() {
+        var pageIds = ids.slice(pageStart, pageStart + PAGE_SIZE);
+        if (!pageIds.length) return;
+
+        gridEl.innerHTML = '';
+        var tasks = pageIds.map(function (id, idx) {
+          var slot = document.createElement('div');
+          slot.className = 'card clickable';
+          slot.innerHTML = '<div class="skeleton skeleton-thumb"></div><div class="skeleton skeleton-text"></div>';
+          gridEl.appendChild(slot);
+          return { id: id, slot: slot, delay: Math.min(idx * 15, 300) };
+        });
+
+        window.scrollTo({ top: gridEl.offsetTop - 80, behavior: 'smooth' });
+
+        poolLimit(tasks, parallel, function (t) {
+          return apiGetTokenURI(addr, t.id)
+            .then(function (resp) { return renderToken(t.id, resp && resp.ok ? resp.tokenURI : null, t.slot, t.delay); })
+            .catch(function () { return renderToken(t.id, null, t.slot, t.delay); });
+        });
+
+        renderPager();
+      }
+
+      function renderPager() {
+        var totalPages = Math.ceil(ids.length / PAGE_SIZE);
+        var currentPage = Math.floor(pageStart / PAGE_SIZE);
+        pagerWrap.innerHTML = '';
+
+        if (totalPages <= 1) return;
+
+        function mkBtn(label, page, disabled, active) {
+          var btn = document.createElement('button');
+          btn.className = 'pager-btn' + (active ? ' active' : '');
+          btn.textContent = label;
+          btn.disabled = disabled;
+          if (!disabled && !active) {
+            btn.addEventListener('click', function () {
+              pageStart = page * PAGE_SIZE;
+              loadPage();
+            });
+          }
+          return btn;
+        }
+
+        pagerWrap.appendChild(mkBtn('←', currentPage - 1, currentPage === 0, false));
+
+        var startP = Math.max(0, currentPage - 3);
+        var endP = Math.min(totalPages - 1, currentPage + 3);
+        if (startP > 0) {
+          pagerWrap.appendChild(mkBtn('1', 0, false, currentPage === 0));
+          if (startP > 1) {
+            var dots = document.createElement('span');
+            dots.className = 'pager-dots';
+            dots.textContent = '…';
+            pagerWrap.appendChild(dots);
+          }
+        }
+        for (var p = startP; p <= endP; p++) {
+          pagerWrap.appendChild(mkBtn(String(p + 1), p, false, p === currentPage));
+        }
+        if (endP < totalPages - 1) {
+          if (endP < totalPages - 2) {
+            var dots2 = document.createElement('span');
+            dots2.className = 'pager-dots';
+            dots2.textContent = '…';
+            pagerWrap.appendChild(dots2);
+          }
+          pagerWrap.appendChild(mkBtn(String(totalPages), totalPages - 1, false, currentPage === totalPages - 1));
+        }
+
+        pagerWrap.appendChild(mkBtn('→', currentPage + 1, currentPage === totalPages - 1, false));
+      }
+
+      hideLoading();
+      loadPage();
     })
     .catch(function (e) { showErr(e.message || String(e)); });
 })();

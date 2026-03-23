@@ -12,6 +12,7 @@
       "tokenIdEnd": 1000,
       "tryTotalSupply": true,
       "maxTokens": 2500,
+      "pageSize": 50,
       "loadParallel": 2,
       "website": "https://core-cats-mint.vercel.app/mint"
     }

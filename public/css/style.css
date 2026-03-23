@@ -375,6 +375,56 @@ footer.site {
   padding: 1rem 0;
 }
 
+/* --- Pager --- */
+.pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.5rem 0 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pager-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pager-btn:hover:not(:disabled):not(.active) {
+  background: var(--card-hover);
+  border-color: var(--border-hover);
+  box-shadow: 0 2px 12px var(--glow);
+}
+
+.pager-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: default;
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pager-dots {
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 0 0.15rem;
+  user-select: none;
+}
+
 /* --- Fade-in animation for cards --- */
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
